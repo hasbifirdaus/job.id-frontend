@@ -4,6 +4,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --brand-color: #2563eb;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 @theme inline {
@@ -29,6 +34,7 @@ body {
   color: #555;
   height: 100%;
   overflow-x: hidden;
+  @apply antialiased;
 }
 
 .Toastify__toast-container {
