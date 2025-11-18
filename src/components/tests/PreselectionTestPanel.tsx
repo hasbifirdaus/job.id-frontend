@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, CheckCircle, ListTodo, FileText } from "lucide-react";
 
 interface PreSelectionTestPanelProps {
   jobId: string;
 }
 
-// Data dummy untuk hasil tes
 interface TestResult {
   applicantName: string;
   score: number;
@@ -34,25 +33,40 @@ const DUMMY_RESULTS: TestResult[] = [
   },
 ];
 
+interface Question {
+  id: number;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+
 const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
   jobId,
 }) => {
-  // State untuk beralih antara mode (Creation: membuat soal, Results: melihat hasil)
   const [mode, setMode] = useState<"results" | "creation">("results");
 
-  // State dummy untuk soal yang sedang dibuat (25 pertanyaan multiple choice)
-  const [questions, setQuestions] = useState(
-    Array(25)
+  // Ambil state dari localStorage jika ada
+  const getInitialQuestions = (): Question[] => {
+    const saved = localStorage.getItem(`questions-${jobId}`);
+    if (saved) return JSON.parse(saved);
+    return Array(25)
       .fill(null)
       .map((_, i) => ({
         id: i + 1,
         question: "",
         options: ["", "", "", ""],
-        correctAnswer: 0, // index 0-3
-      }))
-  );
+        correctAnswer: 0,
+      }));
+  };
 
-  // === Komponen 1: Form Pembuatan Soal (Test Creation) ===
+  const [questions, setQuestions] = useState<Question[]>(getInitialQuestions);
+
+  // Simpan otomatis ke localStorage setiap kali questions berubah
+  useEffect(() => {
+    localStorage.setItem(`questions-${jobId}`, JSON.stringify(questions));
+  }, [questions, jobId]);
+
+  // === Test Creation Form ===
   const TestCreationForm = () => (
     <div className="space-y-6">
       <h3 className="text-xl font-semibold border-b pb-3 mb-4 flex items-center">
@@ -72,7 +86,12 @@ const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
             placeholder="Masukkan teks pertanyaan di sini..."
             rows={2}
             className="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500"
-            // Tambahkan handler untuk menyimpan input ke state
+            value={q.question}
+            onChange={(e) => {
+              const newQuestions = [...questions];
+              newQuestions[index].question = e.target.value;
+              setQuestions(newQuestions);
+            }}
           />
 
           <div className="space-y-2">
@@ -83,13 +102,23 @@ const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
                   type="radio"
                   name={`correct-answer-${q.id}`}
                   checked={q.correctAnswer === optIndex}
-                  // Tambahkan handler untuk mengatur jawaban benar
+                  onChange={() => {
+                    const newQuestions = [...questions];
+                    newQuestions[index].correctAnswer = optIndex;
+                    setQuestions(newQuestions);
+                  }}
                   className="text-indigo-600 focus:ring-indigo-500"
                 />
                 <input
                   type="text"
                   placeholder={`Opsi ${String.fromCharCode(65 + optIndex)}`}
                   className="flex-1 border border-gray-300 rounded-lg p-2 text-sm"
+                  value={q.options[optIndex]}
+                  onChange={(e) => {
+                    const newQuestions = [...questions];
+                    newQuestions[index].options[optIndex] = e.target.value;
+                    setQuestions(newQuestions);
+                  }}
                 />
               </div>
             ))}
@@ -97,13 +126,16 @@ const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
         </div>
       ))}
 
-      <button className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150">
+      <button
+        onClick={() => alert("Tes tersimpan!")}
+        className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150"
+      >
         Simpan dan Aktifkan Tes
       </button>
     </div>
   );
 
-  // === Komponen 2: Tampilan Hasil Tes (Test Results) ===
+  // === Test Results Display ===
   const TestResultsDisplay = () => (
     <div className="space-y-4">
       <h3 className="text-xl font-semibold border-b pb-3 mb-4 flex items-center">
@@ -111,7 +143,6 @@ const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
         Pelamar
       </h3>
 
-      {/* Ringkasan Status */}
       <div className="grid grid-cols-3 gap-4 text-center">
         <div className="p-4 bg-blue-50 rounded-lg">
           <p className="text-2xl font-bold text-blue-800">
@@ -133,7 +164,6 @@ const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
         </div>
       </div>
 
-      {/* Tabel Hasil */}
       <div className="mt-6 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -191,7 +221,6 @@ const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
 
   return (
     <div className="p-4 space-y-4">
-      {/* Tombol Toggle Mode */}
       <div className="flex justify-end space-x-4">
         <button
           onClick={() => setMode("results")}
@@ -215,7 +244,6 @@ const PreSelectionTestPanel: React.FC<PreSelectionTestPanelProps> = ({
         </button>
       </div>
 
-      {/* Konten yang Dipilih */}
       {mode === "results" ? <TestResultsDisplay /> : <TestCreationForm />}
     </div>
   );

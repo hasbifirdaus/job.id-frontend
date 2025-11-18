@@ -5,6 +5,7 @@ import Sidebar from "./Sidebar";
 import MainContent from "./MainContent";
 import AdContainer from "./AdContainer";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function HomeDashboard() {
   const router = useRouter();
@@ -51,9 +52,9 @@ const Header = ({ router }: HeaderProps) => {
     <div className="bg-white p-4 shadow-sm border-b border-gray-200 flex items-center justify-between">
       <div className="text-xl font-bold text-blue-600">naukri</div>
       <div className="hidden md:flex items-center space-x-6 text-sm text-gray-700">
-        <span>Jobs</span>
-        <span>Companies</span>
-        <span>Services</span>
+        <Link href="/jobs">Jobs</Link>
+        <Link href="/companies">Companies</Link>
+
         <input
           type="text"
           placeholder="Search jobs here"

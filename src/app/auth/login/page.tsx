@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
   );
-  const [showPassword, setShowPassword] = useState(false); // 👁️ state baru untuk toggle password
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -50,7 +50,7 @@ export default function LoginPage() {
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
-      if (user.role === "JOB_SEEKER") router.push("/homeJobseeker");
+      if (user.role === "JOB_SEEKER") router.push("/home-jobseeker");
       else if (user.role === "COMPANY_ADMIN") router.push("/dashboard");
       else router.push("/");
     } catch (err: any) {

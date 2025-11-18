@@ -23,6 +23,7 @@ interface RegisterCompanyResponse {
     email: string;
     name: string;
     role?: string;
+    company_id?: number | null;
   };
 }
 
@@ -37,11 +38,10 @@ export default function SetupAccountCompany() {
   } = useForm<SetupFormInputs>({
     resolver: yupResolver(setupAccountCompanyValidationSchema) as any, // 🔧 FIX mismatch tipe
     defaultValues: {
-      companyDescription: "", // tetap string kosong agar tidak bentrok dengan null
+      companyDescription: "",
     },
   });
 
-  // ✅ Ambil email & password dari localStorage
   const companyEmail =
     typeof window !== "undefined"
       ? localStorage.getItem("companyEmail") || ""
@@ -75,6 +75,9 @@ export default function SetupAccountCompany() {
 
       if (response.data?.token) {
         localStorage.setItem("token", response.data.token);
+      }
+      if (response.data?.user) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
       }
 
       setTimeout(() => router.push("/dashboard"), 1500);
