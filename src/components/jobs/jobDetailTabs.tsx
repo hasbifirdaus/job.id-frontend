@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import ApplicantListTable from "@/components/applicants/ApplicantListTable";
+import ApplicantListTable from "../applicants/ApplicantListTable";
 import PreSelectionTestPanel from "../tests/PreselectionTestPanel";
 import InterviewScheduler from "../interviews/InterviewScheduler";
 

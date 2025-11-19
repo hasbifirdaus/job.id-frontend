@@ -10,7 +10,7 @@ import React, {
 import {
   Search,
   MapPin,
-  DollarSign,
+  Banknote,
   Clock,
   Filter,
   ChevronDown,
@@ -577,7 +577,7 @@ const JobCard: React.FC<{ job: JobListing }> = ({ job }) => {
               <MapPin size={14} className="text-red-500" /> {job.location}
             </span>
             <span className="flex items-center gap-1">
-              <DollarSign size={14} className="text-green-600" /> {job.salary}
+              <Banknote size={14} className="text-green-600" /> {job.salary}
             </span>
             <span className="flex items-center gap-1">
               <Clock size={14} className="text-yellow-600" /> {job.type}

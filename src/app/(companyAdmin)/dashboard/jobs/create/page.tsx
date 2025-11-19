@@ -372,6 +372,11 @@ export default function CreateJobPage() {
       }
     }
 
+    if (!user || !user.company_id) {
+      alert("Company ID is missing. Cannot create/edit job.");
+      return;
+    }
+
     // Tentukan aksi dan pesan berdasarkan status is_published
     const action = isEditMode
       ? form.is_published
@@ -398,16 +403,15 @@ export default function CreateJobPage() {
         title: form.title,
         description: form.description,
         banner_image_url: form.banner_image_url || null,
-        // Pastikan konversi ke Number hanya jika string tidak kosong
-        category_id: form.category_id ? Number(form.category_id) : null,
-        city_id: form.city_id ? Number(form.city_id) : null,
+        category_id: form.category_id ? Number(form.category_id) : undefined,
+        city_id: form.city_id ? Number(form.city_id) : undefined,
         min_salary: form.min_salary ? Number(form.min_salary) : null,
         max_salary: form.max_salary ? Number(form.max_salary) : null,
         deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
         is_published: form.is_published,
         tags: form.tags,
         contract_type: form.contract_type || null,
-        company_id: user?.company_id ?? null,
+        company_id: user.company_id,
       };
 
       // Catatan untuk Hasbi (Backend): Pastikan Express.js/Prisma menerima
@@ -418,23 +422,30 @@ export default function CreateJobPage() {
       alert(successMessage);
       router.push("/dashboard/jobs");
     } catch (error: any) {
-      const status = error.response?.status || "N/A"; // TANGKAP STATUS
-      // Ambil pesan utama dari backend
+      const status = error.response?.status || "N/A";
+      const backendData = error.response?.data;
       const backendMessage =
-        error.response?.data?.message ||
-        JSON.stringify(error.response?.data) ||
-        error.message;
+        backendData?.message || JSON.stringify(backendData) || error.message;
+      // Ambil pesan utama dari backend
 
       console.error(
         `ERROR ${action.toUpperCase()} JOB (Status: ${status}):`, // TAMBAHKAN STATUS
         backendMessage
       );
 
-      // Menggunakan pesan backend untuk alert
-      alert(
-        error.response?.data?.message ||
-          `Failed to ${action.toLowerCase()} job posting. Status: ${status}`
-      );
+      let alertMessage = `Failed to ${action.toLowerCase()} job posting. Status: ${status}. Detail di console.`;
+
+      if (status === 400 && backendData?.issues) {
+        const validationMessages = backendData.issues
+          .map((issue: any) => `- ${issue.path.join(".")}: ${issue.message}`)
+          .join("\n");
+        alertMessage = `Validation Failed (400):\n${validationMessages}`;
+        console.error("ZOD VALIDATION ISSUES:", backendData.issues); // Log issues lengkap
+      } else if (backendData?.message) {
+        alertMessage = backendData.message;
+      }
+
+      alert(alertMessage);
     } finally {
       setLoading(false);
     }

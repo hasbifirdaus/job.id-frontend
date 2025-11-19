@@ -1,7 +1,7 @@
 // FILE: src/services/JobsService.client.ts
 
 import axiosClient from "@/lib/axiosClient"; // Sesuaikan path jika perlu
-import { ContractType } from "@/types/job";
+import { ContractType } from "@/types/job.types";
 
 // Tipe data respons dari JobsController.listJobs
 export interface JobListingResponse {
