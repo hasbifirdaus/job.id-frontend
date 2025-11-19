@@ -20,6 +20,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchParams } from "next/navigation";
 
+interface Option {
+  id: string | number;
+  name: string;
+}
+
 interface CustomAxiosError extends Error {
   isAxiosError: true;
   response?: {
