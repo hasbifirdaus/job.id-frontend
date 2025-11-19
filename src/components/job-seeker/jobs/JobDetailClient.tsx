@@ -2,7 +2,7 @@
 
 "use client";
 import React, { useState } from "react";
-// Import useRouter dari next/navigation
+
 import { useRouter } from "next/navigation";
 import {
   MapPin,
@@ -18,6 +18,7 @@ import {
   CheckCircle,
   Tag,
 } from "lucide-react";
+import TakeTestButton from "@/components/job-detail/TakeTestButton";
 
 interface JobProps {
   id: number;
@@ -40,16 +41,10 @@ export default function JobDetailClient({ job }: { job: JobProps }) {
   const [isSaved, setIsSaved] = useState(false);
 
   const handleApply = () => {
-    // 💡 Ganti dengan navigasi ke halaman Apply
-    // Jalur halaman apply adalah: /jobs/[jobId]/apply
     router.push(`/jobs/${job.id}/apply`);
-
-    // setIsApplied(true); // Hapus baris ini jika navigasi sudah benar
-    // alert(`Simulasi: Lamaran untuk Job ID ${job.id} dikirim!`); // Hapus simulasi alert
   };
 
   const handleSave = () => {
-    // TODO: Ganti dengan panggilan API untuk menyimpan pekerjaan
     setIsSaved(!isSaved);
   };
 
@@ -173,13 +168,19 @@ export default function JobDetailClient({ job }: { job: JobProps }) {
                   </p>
                 </div>
               ) : (
-                <button
-                  onClick={handleApply}
-                  className="w-full bg-red-600 text-white py-3 rounded-lg font-bold text-lg flex items-center justify-center space-x-2 hover:bg-red-700 transition transform hover:scale-[1.01] shadow-xl shadow-red-500/30"
-                >
-                  <Send size={20} />
-                  <span>AJUKAN LAMARAN SEKARANG</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleApply}
+                    className="w-full bg-red-600 text-white py-3 rounded-lg font-bold text-lg flex items-center justify-center space-x-2 hover:bg-red-700 transition transform hover:scale-[1.01] shadow-xl shadow-red-500/30"
+                  >
+                    <Send size={20} />
+                    <span>AJUKAN LAMARAN SEKARANG</span>
+                  </button>
+
+                  <div className="mt-6 ml-2">
+                    <TakeTestButton jobId={job.id} />
+                  </div>
+                </>
               )}
 
               {/* Aksi Cepat (Save/Share) - Desktop */}

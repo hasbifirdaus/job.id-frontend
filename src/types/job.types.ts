@@ -5,3 +5,13 @@ export enum ContractType {
   INTERNSHIP = "INTERNSHIP",
   FREELANCE = "FREELANCE",
 }
+
+export interface JobPostingPayload {
+  title: string;
+  description: string;
+  location: string;
+  salary: number | null;
+  banner_image_url?: string;
+  preSelectionEnabled: boolean;
+  preSelectionTestId?: number | null;
+}
