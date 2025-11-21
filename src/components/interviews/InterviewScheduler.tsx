@@ -1,260 +1,411 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Calendar, Mail, Trash2, Edit } from "lucide-react";
+import axiosClient from "@/lib/axiosClient";
 
-interface Interview {
-  id: string;
-  applicantName: string;
-  dateTime: Date;
-  location: string;
-  status: "Scheduled" | "Completed" | "Canceled";
+interface BackendInterview {
+  id: number;
+  application_id: number;
+  schedule_date: string;
+  interview_type: string;
+  meeting_link?: string | null;
+  location?: string | null;
+  notes?: string | null;
+  application: {
+    id: number;
+    user: { id?: number; name: string; email?: string };
+    job: { id: number; title: string; company_id?: number };
+  };
+}
+
+interface ApplicantItem {
+  id: number;
+  user: { name: string };
 }
 
 interface InterviewSchedulerProps {
   jobId: string;
 }
 
-// Data dummy untuk jadwal wawancara
-const DUMMY_SCHEDULES: Interview[] = [
-  {
-    id: "int001",
-    applicantName: "Budi Santoso",
-    dateTime: new Date("2025-11-20T10:00:00"),
-    location: "Zoom Meeting",
-    status: "Scheduled",
-  },
-  {
-    id: "int002",
-    applicantName: "Rizky Alamsyah",
-    dateTime: new Date("2025-11-21T14:30:00"),
-    location: "Kantor Pusat",
-    status: "Scheduled",
-  },
-  {
-    id: "int003",
-    applicantName: "Sarah Lestari",
-    dateTime: new Date("2025-11-05T09:00:00"),
-    location: "Google Meet",
-    status: "Completed",
-  },
-];
+interface ApplicantsResponse {
+  applicants: ApplicantItem[];
+}
+
+interface GetInterviewResponse {
+  success: boolean;
+  data: BackendInterview[];
+}
 
 const InterviewScheduler: React.FC<InterviewSchedulerProps> = ({ jobId }) => {
+  const [schedules, setSchedules] = useState<BackendInterview[]>([]);
+  const [applicants, setApplicants] = useState<ApplicantItem[]>([]);
+
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editInterview, setEditInterview] = useState<BackendInterview | null>(
+    null
+  );
 
-  // Dalam proyek nyata, Anda akan memiliki daftar pelamar yang 'Processed' atau 'Interviewed'
-  const DUMMY_APPLICANTS = ["Budi Santoso", "Rizky Alamsyah", "Fitriani Jaya"];
+  // form values
+  const [applicationId, setApplicationId] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+  const [interviewType, setInterviewType] = useState("OFFLINE");
+  const [location, setLocation] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
+  const [conflictWarning, setConflictWarning] = useState("");
 
-  // Fungsi untuk mengirim email pengingat (Schedule Reminder)
-  const sendReminder = (interviewId: string, applicantName: string) => {
-    alert(
-      `Mengirim email pengingat kepada ${applicantName} (ID: ${interviewId})`
-    );
-    // Implementasi API call untuk mengirim email H-1
+  // ================================
+  // FETCH INTERVIEWS
+  // ================================
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+
+      const res = await axiosClient.get<GetInterviewResponse>("/interview");
+
+      // Pastikan mengambil array-nya
+      const data = res.data?.data ?? [];
+
+      const jobNum = Number(jobId);
+      const filtered = data.filter(
+        (i: BackendInterview) => i.application?.job?.id === jobNum
+      );
+
+      setSchedules(filtered);
+    } catch (err) {
+      console.error(err);
+      alert("Gagal memuat jadwal!");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // === Komponen Modal: Form Pembuatan Jadwal (Create Schedule) ===
-  const ScheduleCreationModal = () => (
-    <div
-      className={`fixed inset-0 z-50 overflow-y-auto ${
-        isModalOpen ? "block" : "hidden"
-      }`}
-      aria-labelledby="modal-title"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background Overlay */}
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          aria-hidden="true"
-          onClick={() => setIsModalOpen(false)}
-        ></div>
-        <span
-          className="hidden sm:inline-block sm:align-middle sm:h-screen"
-          aria-hidden="true"
-        >
-          &#8203;
-        </span>
+  // ================================
+  // FETCH APPLICANTS FOR DROPDOWN
+  // ================================
+  const fetchApplicants = async () => {
+    try {
+      const res = await axiosClient.get<ApplicantsResponse>(
+        `/applicantmanagement/company/jobs/${jobId}/applicants`
+      );
 
-        {/* Modal Panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <h3
-              className="text-lg leading-6 font-medium text-gray-900"
-              id="modal-title"
-            >
-              Buat Jadwal Wawancara Baru
-            </h3>
-            <form className="mt-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Pilih Pelamar
-                </label>
-                <select className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
-                  <option value="">
-                    Pilih Pelamar yang akan diwawancara...
-                  </option>
-                  {DUMMY_APPLICANTS.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Pelamar akan menerima notifikasi jadwal via email.
-                </p>
-              </div>
+      if (Array.isArray(res.data.applicants)) {
+        setApplicants(res.data.applicants);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal memuat data pelamar.");
+    }
+  };
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Waktu
-                  </label>
-                  <input
-                    type="time"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    required
-                  />
-                </div>
-              </div>
+  useEffect(() => {
+    fetchSchedules();
+    fetchApplicants();
+  }, [jobId]);
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Lokasi/Tautan Meeting
-                </label>
-                <input
-                  type="text"
-                  placeholder="Zoom Link / Alamat Kantor"
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
+  // ================================
+  // CONFLICT CHECK
+  // ================================
+  const hasTimeConflict = (newDT: Date, excludeId?: number) => {
+    return schedules.some((i) => {
+      if (i.id === excludeId) return false;
+      const diff = Math.abs(
+        new Date(i.schedule_date).getTime() - newDT.getTime()
+      );
+      return diff < 30 * 60000; // 30 minutes
+    });
+  };
 
-              <div className="pt-3 border-t">
-                <button
-                  type="submit"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700"
-                >
-                  Buat Jadwal & Kirim Email
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-  // End Modal
+  useEffect(() => {
+    if (!selectedDate || !selectedTime) return;
+    const dt = new Date(`${selectedDate}T${selectedTime}`);
+    if (hasTimeConflict(dt, editInterview?.id)) {
+      setConflictWarning("⚠ Jadwal bentrok dengan jadwal lain dalam 30 menit!");
+    } else {
+      setConflictWarning("");
+    }
+  }, [selectedDate, selectedTime, schedules, editInterview]);
+
+  // ================================
+  // OPEN MODAL CREATE
+  // ================================
+  const openCreateModal = () => {
+    setEditInterview(null);
+    setSelectedDate("");
+    setSelectedTime("");
+    setInterviewType("OFFLINE");
+    setLocation("");
+    setMeetingLink("");
+    setApplicationId(null);
+    setIsModalOpen(true);
+  };
+
+  // ================================
+  // OPEN MODAL EDIT
+  // ================================
+  const openEditModal = (i: BackendInterview) => {
+    setEditInterview(i);
+
+    const d = new Date(i.schedule_date);
+    setSelectedDate(d.toISOString().split("T")[0]);
+    setSelectedTime(d.toTimeString().slice(0, 5));
+    setInterviewType(i.interview_type);
+    setLocation(i.location || "");
+    setMeetingLink(i.meeting_link || "");
+    setApplicationId(i.application_id);
+
+    setIsModalOpen(true);
+  };
+
+  // ================================
+  // SUBMIT (CREATE & UPDATE)
+  // ================================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const dt = new Date(`${selectedDate}T${selectedTime}`);
+    if (hasTimeConflict(dt, editInterview?.id)) {
+      alert("Jadwal bentrok!");
+      return;
+    }
+
+    // VALIDATION
+    if (!applicationId) {
+      alert("Pilih pelamar terlebih dahulu!");
+      return;
+    }
+
+    const payload = {
+      application_id: applicationId,
+      schedule_date: dt.toISOString(),
+      interview_type: interviewType,
+      meeting_link: meetingLink || undefined,
+      location: location || undefined,
+    };
+
+    try {
+      if (editInterview) {
+        await axiosClient.put(`/interview/${editInterview.id}`, payload);
+      } else {
+        await axiosClient.post("/interview", payload);
+      }
+
+      await fetchSchedules();
+      setIsModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Gagal menyimpan jadwal");
+    }
+  };
+
+  // ================================
+  // DELETE
+  // ================================
+  const handleDelete = async (id: number) => {
+    if (!confirm("Hapus jadwal wawancara ini?")) return;
+    try {
+      await axiosClient.delete(`/interview/${id}`);
+      fetchSchedules();
+    } catch (err) {
+      console.error(err);
+      alert("Gagal menghapus!");
+    }
+  };
+
+  // ================================
+  // REMINDER
+  // ================================
+  const sendReminder = async (id: number, name: string) => {
+    if (!confirm(`Kirim reminder ke ${name}?`)) return;
+
+    try {
+      const res = await axiosClient.post(`/interview/${id}/send-reminder`);
+
+      alert("Reminder berhasil dikirim!");
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.message || "Gagal mengirim reminder");
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <ScheduleCreationModal />
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white p-6 rounded-lg w-full max-w-lg space-y-4"
+          >
+            <h2 className="text-lg font-semibold">
+              {editInterview ? "Edit Jadwal" : "Buat Jadwal"}
+            </h2>
 
-      <div className="flex justify-between items-center border-b pb-3">
-        <h3 className="text-xl font-semibold flex items-center">
-          <Calendar className="w-5 h-5 mr-2 text-indigo-600" /> Daftar Jadwal
-          Wawancara
+            {/* Applicant dropdown */}
+            {!editInterview && (
+              <div>
+                <label className="block mb-1">Pilih Pelamar</label>
+                <select
+                  className="w-full border p-2"
+                  value={applicationId ?? ""}
+                  onChange={(e) =>
+                    setApplicationId(Number(e.target.value) || null)
+                  }
+                  required
+                >
+                  <option value="">-- pilih pelamar --</option>
+                  {applicants.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label>Tanggal</label>
+              <input
+                type="date"
+                className="w-full border p-2"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label>Waktu</label>
+              <input
+                type="time"
+                className="w-full border p-2"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                required
+              />
+            </div>
+
+            {conflictWarning && (
+              <p className="text-red-500 text-sm">{conflictWarning}</p>
+            )}
+
+            <div>
+              <label>Jenis Interview</label>
+              <select
+                className="w-full border p-2"
+                value={interviewType}
+                onChange={(e) => setInterviewType(e.target.value)}
+              >
+                <option value="ONLINE">ONLINE</option>
+                <option value="OFFLINE">OFFLINE</option>
+                <option value="HYBRID">HYBRID</option>
+              </select>
+            </div>
+
+            {interviewType !== "OFFLINE" && (
+              <div>
+                <label>Meeting Link</label>
+                <input
+                  className="w-full border p-2"
+                  value={meetingLink}
+                  onChange={(e) => setMeetingLink(e.target.value)}
+                />
+              </div>
+            )}
+
+            {interviewType !== "ONLINE" && (
+              <div>
+                <label>Lokasi</label>
+                <input
+                  className="w-full border p-2"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="bg-indigo-600 text-white w-full py-2 rounded"
+            >
+              Simpan
+            </button>
+
+            <button
+              type="button"
+              className="text-gray-600 w-full py-2"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Batal
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex justify-between">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-indigo-600" /> Jadwal Wawancara
         </h3>
-        {/* Tombol Create Schedule */}
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 flex items-center"
+          onClick={openCreateModal}
+          className="px-4 py-2 rounded bg-indigo-600 text-white"
         >
-          <Plus className="w-4 h-4 mr-2" /> Buat Jadwal
+          <Plus className="w-4 h-4 inline mr-1" />
+          Buat
         </button>
       </div>
 
-      {/* Tabel Jadwal */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Pelamar
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Tanggal & Waktu
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Lokasi
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                Aksi
-              </th>
+      {/* Table */}
+      {loading ? (
+        <p>Loading...</p>
+      ) : schedules.length === 0 ? (
+        <p className="text-gray-500">Belum ada jadwal.</p>
+      ) : (
+        <table className="min-w-full border">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="p-2 text-left">Pelamar</th>
+              <th className="p-2 text-left">Tanggal</th>
+              <th className="p-2 text-left">Tipe</th>
+              <th className="p-2 text-center">Aksi</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {DUMMY_SCHEDULES.map((interview) => (
-              <tr key={interview.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {interview.applicantName}
+          <tbody>
+            {schedules.map((i) => (
+              <tr key={i.id} className="border-b">
+                <td className="p-2">{i.application.user.name}</td>
+                <td className="p-2">
+                  {new Date(i.schedule_date).toLocaleString("id-ID")}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {interview.dateTime.toLocaleDateString("id-ID")} -{" "}
-                  {interview.dateTime.toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {interview.location}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      interview.status === "Scheduled"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-green-100 text-green-800"
-                    }`}
+                <td className="p-2">{i.interview_type}</td>
+                <td className="p-2 flex gap-3 justify-center">
+                  <button
+                    onClick={() => sendReminder(i.id, i.application.user.name)}
+                    className="text-blue-600"
                   >
-                    {interview.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <div className="flex space-x-2 justify-center">
-                    {interview.status === "Scheduled" && (
-                      <button
-                        onClick={() =>
-                          sendReminder(interview.id, interview.applicantName)
-                        }
-                        title="Kirim Email Pengingat (H-1)"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <Mail className="w-5 h-5" />
-                      </button>
-                    )}
-                    <button
-                      title="Edit Jadwal"
-                      className="text-gray-600 hover:text-gray-800"
-                    >
-                      <Edit className="w-5 h-5" />
-                    </button>
-                    <button
-                      title="Hapus Jadwal"
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
+                    <Mail />
+                  </button>
+
+                  <button
+                    onClick={() => openEditModal(i)}
+                    className="text-gray-600"
+                  >
+                    <Edit />
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(i.id)}
+                    className="text-red-600"
+                  >
+                    <Trash2 />
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      )}
     </div>
   );
 };
