@@ -20,8 +20,6 @@ import {
 
 import ConfirmationModal from "../utils/ConfirmationModal";
 
-// --- Definisi Tipe (Interfaces) ---
-
 interface JobPosting {
   id: number;
   title: string;
